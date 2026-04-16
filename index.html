@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Бюджет расходов 2026 — KGS</title>
+<title>Контроль Расходов ОсОО Кар Лабс</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -230,6 +230,31 @@ footer { text-align:center; padding:14px; color:#bbb; font-size:11px; }
 .add-dir-row td { padding:8px 10px; }
 .cur-flag { background:#1a3a6b; color:#fff; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:10px; margin-left:8px; }
 
+/* ── INCOME ── */
+.income-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:20px; }
+.income-stat { background:#fff; border-radius:12px; padding:18px 20px; box-shadow:0 2px 8px rgba(0,0,0,.08); border-left:5px solid #4EA72A; }
+.income-stat.blue { border-color:#2471a3; }
+.income-stat.red { border-color:#c0392b; }
+.income-stat.profit { border-color:#8e44ad; }
+.income-stat .stat-label { font-size:11px; color:#888; margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
+.income-stat .stat-value { font-size:26px; font-weight:900; }
+.income-stat .stat-sub { font-size:11px; color:#aaa; margin-top:4px; }
+.income-table { width:100%; border-collapse:collapse; font-size:13px; }
+.income-table thead th { background:#375623; color:#fff; padding:10px 12px; text-align:left; font-weight:600; position:sticky; top:0; }
+.income-table tbody tr:hover { background:#f0f9ea; }
+.income-table tbody td { padding:9px 12px; border-bottom:1px solid #f0f0f0; }
+.income-table .num { text-align:right; font-weight:600; }
+.income-table .del-btn { background:none; border:none; cursor:pointer; color:#e74c3c; font-size:16px; padding:2px 6px; border-radius:4px; }
+.income-table .del-btn:hover { background:#fee; }
+.cat-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#e8f5e9; color:#2e7d32; }
+.profit-positive { color:#2e7d32; }
+.profit-negative { color:#c0392b; }
+.net-profit-card { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; border-radius:12px; padding:20px 24px; box-shadow:0 4px 16px rgba(102,126,234,.35); margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
+.net-profit-card .npc-label { font-size:13px; opacity:.85; margin-bottom:4px; }
+.net-profit-card .npc-value { font-size:32px; font-weight:900; }
+.net-profit-card .npc-sub { font-size:12px; opacity:.75; margin-top:4px; }
+.net-profit-card .npc-icon { font-size:48px; opacity:.4; }
+
 /* ── ЛОГИН ── */
 #loginOverlay {
   position:fixed; inset:0; z-index:99999;
@@ -303,7 +328,7 @@ body.view-mode .edit-only { display:none !important; }
 <div id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">📊</div>
-    <h2>Бюджет расходов 2026</h2>
+    <h2>Контроль Расходов ОсОО Кар Лабс</h2>
     <p>Введите пароль для входа</p>
     <input type="password" id="loginPass" placeholder="Пароль"
       onkeydown="if(event.key==='Enter') doLogin()">
@@ -320,7 +345,7 @@ body.view-mode .edit-only { display:none !important; }
 <!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
 <div class="page-header">
   <div>
-    <div class="logo">📊 Бюджет расходов 2026</div>
+    <div class="logo">📊 Контроль Расходов ОсОО Кар Лабс</div>
     <div class="subtitle">Валюта: Кыргызский сом (KGS) · Учёт · Контроль · Анализ</div>
   </div>
   <div class="hdr-btns">
@@ -344,6 +369,7 @@ body.view-mode .edit-only { display:none !important; }
   <button class="tab-btn active" onclick="switchTab('budget',this)">📊 Бюджет</button>
   <button class="tab-btn"        onclick="switchTab('svod',this)">📋 Сводка</button>
   <button class="tab-btn"        onclick="switchTab('ref',this)">📂 Справочник</button>
+  <button class="tab-btn" onclick="switchTab('income',this)">💰 Доходы</button>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════
@@ -563,6 +589,130 @@ body.view-mode .edit-only { display:none !important; }
   </div>
 </div><!-- /tab-ref -->
 
+<!-- ═══════════════════════════════════════════════════════════════════
+     ТАБ 4: ДОХОДЫ
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="tab-income" class="tab-content">
+
+  <!-- Фильтр доходов -->
+  <div class="sv-filters" id="incomeFilters">
+    <label>Квартал:</label>
+    <select id="incomeQFilter" onchange="renderIncome()">
+      <option value="">Все кварталы</option>
+      <option value="Q1">I квартал (Янв–Мар)</option>
+      <option value="Q2">II квартал (Апр–Июн)</option>
+      <option value="Q3">III квартал (Июл–Сен)</option>
+      <option value="Q4">IV квартал (Окт–Дек)</option>
+    </select>
+    <label>Категория:</label>
+    <select id="incomeCatFilter" onchange="renderIncome()">
+      <option value="">Все категории</option>
+      <option>Продажи / Выручка</option>
+      <option>Услуги</option>
+      <option>Аренда</option>
+      <option>Инвестиции</option>
+      <option>Субсидии / Гранты</option>
+      <option>Прочее</option>
+    </select>
+    <button class="btn btn-gray btn-sm" onclick="clearIncomeFilters()">✕ Сбросить</button>
+    <span id="incomeFilterCount" class="badge-count">0</span>
+  </div>
+
+  <div class="container">
+
+    <!-- Summary cards -->
+    <div class="income-stats" id="incomeStats"></div>
+
+    <!-- Net Profit Banner -->
+    <div class="net-profit-card" id="netProfitBanner">
+      <div>
+        <div class="npc-label">💹 Чистая прибыль (Доходы − Расходы)</div>
+        <div class="npc-value" id="netProfitValue">0 сом</div>
+        <div class="npc-sub" id="netProfitSub">Загрузка данных...</div>
+      </div>
+      <div class="npc-icon" id="netProfitIcon">📈</div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="charts-row" style="margin-bottom:16px;">
+      <div class="chart-box">
+        <h3>🥧 Доходы по категориям</h3>
+        <canvas id="incomePieChart" style="max-height:220px;"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>📊 Доходы vs Расходы по месяцам</h3>
+        <canvas id="incomeBarChart" style="max-height:220px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Add income form -->
+    <div class="section edit-only" style="margin-bottom:16px;">
+      <div class="section-head">💰 Добавить доход</div>
+      <div class="section-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Категория</label>
+            <select id="iCategory">
+              <option>Продажи / Выручка</option>
+              <option>Услуги</option>
+              <option>Аренда</option>
+              <option>Инвестиции</option>
+              <option>Субсидии / Гранты</option>
+              <option>Прочее</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Дата</label>
+            <input type="date" id="iDate">
+          </div>
+          <div class="form-group">
+            <label>Сумма (сом)</label>
+            <input type="number" id="iAmount" placeholder="0" min="0" step="100"
+              oninput="previewIncomeRate()">
+          </div>
+          <div class="form-group">
+            <label>Описание</label>
+            <input type="text" id="iDesc" placeholder="Краткое описание..." style="min-width:220px;">
+          </div>
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button class="btn" style="background:linear-gradient(135deg,#667eea,#764ba2);" onclick="addIncome()">✔ Добавить доход</button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:4px;">
+          💱 USD: <span id="iUsdPreview">—</span> &nbsp;|&nbsp; Курс: <span id="iRateHint">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Income table -->
+    <div class="section">
+      <div class="section-head">
+        <span>📋 Все доходы</span>
+        <span id="incomeCount" style="font-size:11px;opacity:.8;"></span>
+      </div>
+      <div style="overflow-x:auto; max-height:520px; overflow-y:auto;">
+        <table class="income-table" id="incomeTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Дата</th>
+              <th>Категория</th>
+              <th>Описание</th>
+              <th style="text-align:right">Сумма (сом)</th>
+              <th style="text-align:right">USD</th>
+              <th style="text-align:center">Доля</th>
+              <th class="edit-only"></th>
+            </tr>
+          </thead>
+          <tbody id="incomeBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /tab-income -->
+
 <footer>Бюджет расходов · Данные из Google Sheets · При добавлении нового года — добавь лист в таблицу и год в AVAILABLE_YEARS</footer>
 
 <script>
@@ -645,6 +795,7 @@ function checkSession(){
 //  GOOGLE SHEETS CONFIG
 // ════════════════════════════════════════════════════════════════════
 const SPREADSHEET_ID = "1mOwVxLpPHqgwsk5O42fm8GHBfpmHC8ZTDdx6_uAPfQk";
+const SCRIPT_URL     = "https://script.google.com/macros/s/AKfycbwwjxbJEqqDuy_xOyA8R5d8rrEXOT8gufQQS4U8bjwAnsuY_06VqPV_MqtrMyEM5VHBJA/exec";
 const AVAILABLE_YEARS = [2026, 2027];
 let currentYear = 2026;
 
@@ -652,20 +803,62 @@ function gsURL(sheetName){
   return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
 }
 
+// ── POST to Google Apps Script (no-cors, fire-and-forget) ──────────────
+function postToSheets(params){
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    mode:   "no-cors",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body:   new URLSearchParams(params).toString()
+  }).catch(e => console.warn("Sheets POST error:", e));
+}
+
 const MONTH_KEYS = {
   "Январь":"m1","Февраль":"m2","Март":"m3","Апрель":"m4","Май":"m5","Июнь":"m6",
   "Июль":"m7","Август":"m8","Сентябрь":"m9","Октябрь":"m10","Ноябрь":"m11","Декабрь":"m12"
 };
 
+function splitCSVLine(line){
+  const result = [];
+  let cur = "", inQ = false;
+  for(let i=0; i<line.length; i++){
+    const ch = line[i];
+    if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; }
+    else if(ch===',' && !inQ){ result.push(cur); cur=""; }
+    else cur+=ch;
+  }
+  result.push(cur);
+  return result.map(c=>c.trim());
+}
+
+function parseNum(s){ return parseFloat(String(s||0).replace(",","."))||0; }
+
 function parseCSV(text){
   const lines = text.trim().split("\n");
-  const headers = lines[0].split(",").map(c=>c.trim().replace(/^"|"$/g,""));
+  const headers = splitCSVLine(lines[0]);
   const data = [];
   for(let i=1;i<lines.length;i++){
-    const row = lines[i].split(",").map(c=>c.trim().replace(/^"|"$/g,""));
+    const row = splitCSVLine(lines[i]);
     if(!row[0] && !row[1]) continue;
     const obj = {};
     headers.forEach((h,j)=>{ obj[h]=row[j]||""; });
+    data.push(obj);
+  }
+  return data;
+}
+
+function parseCSVPositional(text, cols){
+  const lines = text.trim().split("\n");
+  if(!lines.length) return [];
+  const data = [];
+  let startIdx = 0;
+  const firstCell = splitCSVLine(lines[0])[0] || "";
+  if(!/^\d{10,}$/.test(firstCell)) startIdx = 1;
+  for(let i=startIdx; i<lines.length; i++){
+    const row = splitCSVLine(lines[i]);
+    if(!row[0] && !row[1]) continue;
+    const obj = {};
+    cols.forEach((col,j)=>{ obj[col]=row[j]||""; });
     data.push(obj);
   }
   return data;
@@ -714,9 +907,11 @@ async function loadFromGoogleSheets(year){
   year = year || currentYear;
   document.getElementById("gsLoading").style.display = "flex";
   try {
-    const [refResp, dataResp] = await Promise.all([
+    const [refResp, dataResp, расходыResp, доходыResp] = await Promise.all([
       fetch(gsURL("Справочник")),
-      fetch(gsURL(String(year)))
+      fetch(gsURL(String(year))),
+      fetch(gsURL("Расходы")),
+      fetch(gsURL("Доходы"))
     ]);
     if(!refResp.ok || !dataResp.ok) throw new Error("Ошибка загрузки");
     const [refText, dataText] = await Promise.all([refResp.text(), dataResp.text()]);
@@ -735,6 +930,67 @@ async function loadFromGoogleSheets(year){
     currentYear = year;
     document.getElementById("yearBadge").textContent = year;
     console.log(`✅ Данные загружены: ${year}, ${merged.length} блоков`);
+
+    // Загружаем расходы из листа "Расходы"
+    const РАСХ_COLS = ['id','date','block','dir','quarter','month','monthName','amount','amountUsd','usdRate','rateDate','desc'];
+    if(расходыResp.ok){
+      try{
+        const расходыText = await расходыResp.text();
+        const расходыRows = parseCSVPositional(расходыText, РАСХ_COLS);
+        if(расходыRows.length){
+          const sheetExtras = расходыRows.filter(r => r.block).map(r => ({
+            id: r.id||"", date: r.date||"", block: r.block||"", dir: r.dir||"",
+            quarter: r.quarter||"Q1", month: r.month||"m1", monthName: r.monthName||"",
+            amount: parseNum(r.amount),
+            amountUsd: r.amountUsd ? parseNum(r.amountUsd) : null,
+            usdRate: r.usdRate ? parseNum(r.usdRate) : null,
+            rateDate: r.rateDate||"", desc: r.desc||""
+          }));
+          const sheetIds = new Set(sheetExtras.filter(e=>e.id).map(e=>e.id));
+          const localOnly = extras.filter(e => e.id && !sheetIds.has(e.id));
+          extras = [...sheetExtras, ...localOnly];
+          saveExtras();
+          console.log(`✅ Расходы загружены из Sheets: ${extras.length} записей`);
+        }
+      } catch(re){ console.warn("⚠ Ошибка загрузки расходов:", re.message); }
+    }
+
+    // Загружаем доходы из листа "Доходы"
+    const ДОХ_COLS = ['id','date','category','desc','amount','amountUsd','usdRate','rateDate'];
+    if(доходыResp.ok){
+      try{
+        const txt = await доходыResp.text();
+        const rows = parseCSVPositional(txt, ДОХ_COLS);
+        if(rows.length){
+          const sheetInc = rows.filter(r=>r.date||r.category).map(r=>({
+            id: r.id||"",
+            date: r.date||"",
+            category: r.category||"Прочее",
+            desc: r.desc||"",
+            amount: parseNum(r.amount),
+            amountUsd: r.amountUsd ? parseNum(r.amountUsd) : null,
+            usdRate: r.usdRate ? parseNum(r.usdRate) : null,
+            rateDate: r.rateDate||""
+          }));
+          const sheetIncIds = new Set(sheetInc.filter(e=>e.id).map(e=>e.id));
+          const localIncOnly = incomes.filter(e => e.id && !sheetIncIds.has(e.id));
+          incomes = [...sheetInc, ...localIncOnly];
+          saveIncomes();
+          console.log(`✅ Доходы загружены из Sheets: ${incomes.length} записей`);
+        }
+      } catch(re){ console.warn("⚠ Ошибка загрузки доходов:", re.message); }
+    }
+
+    // Инициализируем quarterly_budgets из refBlocks (если ключа ещё нет)
+    refBlocks.forEach(b => b.dirs.forEach(d => {
+      ["Q1","Q2","Q3","Q4"].forEach(q => {
+        const qKey = `${year}::${q}::${b.block}::${d.name}`;
+        if(!(qKey in quarterlyBudgets)){
+          quarterlyBudgets[qKey] = d.budget;
+        }
+      });
+    }));
+    saveCustomBudgets();
   } catch(e){
     console.warn("⚠ Не удалось загрузить Google Sheets:", e.message);
     // fallback: keep existing data
@@ -748,7 +1004,7 @@ async function switchYear(year){
   if(year === currentYear) return;
   extras = [];
   hiddenBase.clear();
-  customBudgets = {};
+  // НЕ сбрасываем quarterlyBudgets — они обновятся из Google Sheets после загрузки
   await loadFromGoogleSheets(year);
   syncAll();
   renderRef();
@@ -788,7 +1044,10 @@ function loadRefBlocks(){
     dirs:  b.dirs.map(d=>({name:d.name, budget:d.budget, m1:d.m1||0, m2:d.m2||0, m3:d.m3||0, m4:d.m4||0, m5:d.m5||0, m6:d.m6||0, m7:d.m7||0, m8:d.m8||0, m9:d.m9||0, m10:d.m10||0, m11:d.m11||0, m12:d.m12||0}))
   }));
 }
-function saveRefBlocks(){ localStorage.setItem("ref_blocks_2026", JSON.stringify(refBlocks)); }
+function saveRefBlocks(){
+  localStorage.setItem("ref_blocks_2026", JSON.stringify(refBlocks));
+  postToSheets({ action: "updateRef", data: JSON.stringify(refBlocks) });
+}
 
 function getBlockColor(blockName){
   return refBlocks.find(b=>b.block===blockName)?.color || "#4EA72A";
@@ -834,21 +1093,43 @@ let refBlocks = loadRefBlocks(); // ← после INITIAL_DATA, теперь п
 let extras = JSON.parse(localStorage.getItem("budget_extras_2026")||"[]");
 function saveExtras(){ localStorage.setItem("budget_extras_2026",JSON.stringify(extras)); }
 
+// ── ДОХОДЫ ──────────────────────────────────────────────────────────
+let incomes = JSON.parse(localStorage.getItem("budget_incomes_2026")||"[]");
+function saveIncomes(){ localStorage.setItem("budget_incomes_2026", JSON.stringify(incomes)); }
+
+const INCOME_CATEGORIES = [
+  "Продажи / Выручка","Услуги","Аренда","Инвестиции","Субсидии / Гранты","Прочее"
+];
+const INCOME_CAT_COLORS = {
+  "Продажи / Выручка":"#2e7d32",
+  "Услуги":"#1565c0",
+  "Аренда":"#e65100",
+  "Инвестиции":"#6a1b9a",
+  "Субсидии / Гранты":"#00695c",
+  "Прочее":"#546e7a"
+};
+
 // Скрытые базовые строки: Set ключей "Блок::Направление::m1"
 let hiddenBase = new Set(JSON.parse(localStorage.getItem("hidden_base_2026")||"[]"));
 function saveHiddenBase(){ localStorage.setItem("hidden_base_2026",JSON.stringify([...hiddenBase])); }
 function hideBaseRow(key){ hiddenBase.add(key); saveHiddenBase(); syncAll(); }
 function restoreBase(){ hiddenBase.clear(); saveHiddenBase(); syncAll(); }
 
-// Кастомные бюджеты: ключ = "Блок::Направление"
-let customBudgets = JSON.parse(localStorage.getItem("budget_custom_2026")||"{}");
-function saveCustomBudgets(){ localStorage.setItem("budget_custom_2026",JSON.stringify(customBudgets)); }
+// Бюджеты по кварталам и годам: ключ = "год::квартал::Блок::Направление"
+let quarterlyBudgets = JSON.parse(localStorage.getItem("quarterly_budgets")||"{}");
+// Сбрасываем старый формат (budget_custom_2026) — у него не было кварталов
+if(localStorage.getItem("budget_custom_2026")){ localStorage.removeItem("budget_custom_2026"); }
+function saveCustomBudgets(){ localStorage.setItem("quarterly_budgets",JSON.stringify(quarterlyBudgets)); }
+function _currentQ(){ return document.getElementById("selQuarter")?.value || "Q1"; }
 function getBudget(block,name){
-  const key=`${block}::${name}`;
-  return customBudgets[key] ?? INITIAL_DATA.find(b=>b.block===block)?.dirs.find(d=>d.name===name)?.budget ?? 0;
+  const key = `${currentYear}::${_currentQ()}::${block}::${name}`;
+  if(key in quarterlyBudgets) return quarterlyBudgets[key];
+  return refBlocks.find(b=>b.block===block)?.dirs.find(d=>d.name===name)?.budget ?? 0;
 }
 function setBudget(block,name,val){
-  customBudgets[`${block}::${name}`]=val;
+  const q = _currentQ();
+  const key = `${currentYear}::${q}::${block}::${name}`;
+  quarterlyBudgets[key] = val;
   saveCustomBudgets();
 }
 
@@ -866,7 +1147,11 @@ function editBudgetCell(el, block, name){
 
 function saveBudgetCell(inp, block, name){
   const val = parseFloat(inp.value);
-  if(!isNaN(val) && val>=0) setBudget(block, name, val);
+  if(!isNaN(val) && val>=0){
+    const q = _currentQ();
+    setBudget(block, name, val);
+    postToSheets({ action: "updateBudget", block, dir: name, value: val, year: currentYear, quarter: q });
+  }
   syncAll();
 }
 
@@ -921,7 +1206,11 @@ function getVal(dir,key){
   // Базовое значение — 0 если строка скрыта в Сводке
   const baseKey = `${dir._block}::${dir.name}::${key}`;
   let v = hiddenBase.has(baseKey) ? 0 : (dir[key]||0);
-  extras.forEach(e=>{ if(e.block===dir._block&&e.dir===dir.name&&e.month===key) v+=e.amount; });
+  const yearStr = String(currentYear);
+  extras.forEach(e=>{
+    if(e.block===dir._block && e.dir===dir.name && e.month===key &&
+       (!e.date || e.date.startsWith(yearStr))) v+=e.amount;
+  });
   return v;
 }
 function buildData(){
@@ -946,6 +1235,7 @@ function switchTab(id,btn){
   render();
   renderSvod();
   if(id==="ref") renderRef();
+  if(id==="income") renderIncome();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -959,7 +1249,18 @@ function renderCards(data){
   const totalB = data.reduce((s,b)=>s+b.dirs.reduce((ss,d)=>ss+d.budget,0),0);
   const totalF = data.reduce((s,b)=>s+b.dirs.reduce((ss,d)=>ss+getVal(d,qk[0])+getVal(d,qk[1])+getVal(d,qk[2]),0),0);
   const rem=totalB-totalF, p=pct(totalF,totalB);
+  const totalIncome = filterIncByQ(incomes, q).reduce((s,e)=>s+e.amount,0);
+  const netProfit = totalIncome - totalF;
   document.getElementById("cards").innerHTML=`
+    <div class="card purple">
+      <div class="card-label">💹 Доходы (всего)</div>
+      <div class="card-value">${fmtN(totalIncome)} сом</div>
+    </div>
+    <div class="card ${netProfit>=0?'':'red'}">
+      <div class="card-label">📈 Чистая прибыль</div>
+      <div class="card-value ${netProfit>=0?'profit-positive':'profit-negative'}">${netProfit>=0?'+':''}${fmtN(netProfit)} сом</div>
+      <div class="card-sub">${netProfit>=0?'Прибыль 🟢':'Убыток 🔴'}</div>
+    </div>
     <div class="card blue">
       <div class="card-label">Бюджет на квартал (${Q_LABELS[q]})</div>
       <div class="card-value">${fmtN(totalB)} сом</div>
@@ -1085,15 +1386,50 @@ async function addEntry(){
   const usdRate   = res?.rate   || null;
   const rateDate  = res?.actualDate || date;
   const amountUsd = usdRate ? parseFloat((amount * usdRate).toFixed(2)) : null;
+  const id        = Date.now().toString();
 
-  extras.push({block,dir,quarter,month,monthName,date,desc,amount,amountUsd,usdRate,rateDate});
+  const newEntry = {id,block,dir,quarter,month,monthName,date,desc,amount,amountUsd,usdRate,rateDate};
+  extras.push(newEntry);
   saveExtras();
+
+  // Автоматически добавить направление в Справочник если его там нет
+  autoAddDirToRef(block, dir);
+
+  // Sync to Google Sheets (Apps Script expects data as JSON string)
+  postToSheets({
+    action: "addExpense",
+    data: JSON.stringify({id, block, dir, quarter, month, monthName, date, desc,
+      amount, amountUsd: amountUsd ?? null, usdRate: usdRate ?? null, rateDate})
+  });
   document.getElementById("fAmount").value="";
   document.getElementById("fDesc").value="";
   document.getElementById("usdPreview").textContent="—";
   document.getElementById("rateHint").textContent="";
   render();
   showToast(`Расход добавлен: ${dir} — ${amount.toLocaleString()} сом`, "success");
+}
+
+function autoAddDirToRef(block, dir){
+  if(!block || !dir) return;
+  let blkObj = refBlocks.find(b => b.block === block);
+  if(!blkObj){
+    const colors = ["#4EA72A","#2471a3","#e67e22","#8e44ad","#c0392b","#16a085","#d35400"];
+    blkObj = { block, color: colors[refBlocks.length % colors.length], dirs: [] };
+    refBlocks.push(blkObj);
+  }
+  const exists = blkObj.dirs.some(d => d.name === dir);
+  if(exists) return;
+  blkObj.dirs.push({
+    name: dir, budget: 0,
+    m1:0, m2:0, m3:0, m4:0, m5:0, m6:0,
+    m7:0, m8:0, m9:0, m10:0, m11:0, m12:0
+  });
+  saveRefBlocks();
+  updateDirs();
+  if(typeof updateFormBlocks === "function") updateFormBlocks();
+  renderRef();
+  syncAll();
+  showToast(`✅ «${dir}» добавлено в Справочник → ${block}`, "success", 3000);
 }
 
 function updateDirs(){
@@ -1433,8 +1769,11 @@ function resetBudgets(){
 function delEntry(i){
   if(currentRole !== "editor"){ showToast("Нет прав на редактирование", "error"); return; }
   if(!confirm("Удалить эту запись?")) return;
+  const entry = extras[i];
   extras.splice(i,1);
   saveExtras();
+  // Sync delete to Google Sheets
+  if(entry?.id) postToSheets({ action: "deleteExpense", id: entry.id });
   syncAll();
 }
 
@@ -1647,6 +1986,261 @@ function updateFormBlocks(){
 }
 
 // ════════════════════════════════════════════════════════════════════
+//  ТАБ 4 — ДОХОДЫ
+// ════════════════════════════════════════════════════════════════════
+let incomePieC = null, incomeBarC = null;
+
+// Определить квартал по дате "YYYY-MM-DD"
+function getIncomeQuarter(dateStr){
+  if(!dateStr) return null;
+  const m = parseInt(dateStr.split("-")[1]);
+  if(m <= 3) return "Q1";
+  if(m <= 6) return "Q2";
+  if(m <= 9) return "Q3";
+  return "Q4";
+}
+
+// Отфильтровать массив доходов по кварталу (пустая строка = все)
+function filterIncByQ(arr, q){
+  const yearStr = String(currentYear);
+  return arr.filter(e => {
+    if(e.date && !e.date.startsWith(yearStr)) return false;
+    if(q && getIncomeQuarter(e.date) !== q) return false;
+    return true;
+  });
+}
+
+function clearIncomeFilters(){
+  const qf = document.getElementById("incomeQFilter");
+  const cf = document.getElementById("incomeCatFilter");
+  if(qf) qf.value = "";
+  if(cf) cf.value = "";
+  renderIncome();
+}
+
+async function previewIncomeRate(){
+  const date = document.getElementById("iDate").value;
+  const amount = parseFloat(document.getElementById("iAmount").value);
+  if(!amount || isNaN(amount)) { document.getElementById("iUsdPreview").textContent="—"; return; }
+  const res = await fetchRate(date);
+  if(res?.rate){
+    const usd = (amount * res.rate).toFixed(2);
+    document.getElementById("iUsdPreview").textContent = usd + " $";
+    document.getElementById("iRateHint").textContent = "1 сом = " + res.rate.toFixed(6) + " USD (" + (res.actualDate||date) + ")";
+  }
+}
+
+async function addIncome(){
+  if(currentRole !== "editor"){ showToast("Нет прав на редактирование", "error"); return; }
+  const category = document.getElementById("iCategory").value;
+  const date     = document.getElementById("iDate").value;
+  const amount   = parseFloat(document.getElementById("iAmount").value);
+  const desc     = document.getElementById("iDesc").value.trim();
+  if(!date || isNaN(amount) || amount <= 0){
+    showToast("Укажите дату и сумму!", "warning"); return;
+  }
+  const btn = document.querySelector("button[onclick='addIncome()']");
+  btn.textContent="⏳..."; btn.disabled=true;
+  const res = await fetchRate(date);
+  btn.textContent="✔ Добавить доход"; btn.disabled=false;
+
+  const usdRate   = res?.rate || null;
+  const rateDate  = res?.actualDate || date;
+  const amountUsd = usdRate ? parseFloat((amount * usdRate).toFixed(2)) : null;
+  const id        = Date.now().toString();
+
+  const entry = {id, date, category, desc, amount, amountUsd, usdRate, rateDate};
+  incomes.push(entry);
+  saveIncomes();
+
+  postToSheets({
+    action: "addIncome",
+    data: JSON.stringify({id, date, category, desc, amount, amountUsd: amountUsd??null, usdRate: usdRate??null, rateDate})
+  });
+
+  document.getElementById("iAmount").value="";
+  document.getElementById("iDesc").value="";
+  document.getElementById("iUsdPreview").textContent="—";
+  document.getElementById("iRateHint").textContent="—";
+  renderIncome();
+  renderCards(buildData()); // update net profit card
+  showToast(`Доход добавлен: ${category} — ${amount.toLocaleString()} сом`, "success");
+}
+
+function delIncome(i){
+  if(currentRole !== "editor"){ showToast("Нет прав", "error"); return; }
+  if(!confirm("Удалить эту запись о доходе?")) return;
+  const entry = incomes[i];
+  incomes.splice(i,1);
+  saveIncomes();
+  if(entry?.id) postToSheets({ action:"deleteIncome", id: entry.id });
+  renderIncome();
+  renderCards(buildData());
+}
+
+function renderIncome(){
+  // ── Применяем фильтры ────────────────────────────────────────────
+  const qf  = document.getElementById("incomeQFilter")?.value  || "";
+  const catf= document.getElementById("incomeCatFilter")?.value || "";
+  const yearStr = String(currentYear);
+  const filtered = incomes.filter(e => {
+    if(e.date && !e.date.startsWith(yearStr))      return false;
+    if(qf   && getIncomeQuarter(e.date) !== qf)   return false;
+    if(catf  && e.category !== catf)               return false;
+    return true;
+  });
+
+  // Обновляем счётчик фильтра
+  const fcEl = document.getElementById("incomeFilterCount");
+  if(fcEl) fcEl.textContent = filtered.length;
+
+  const totalInc = filtered.reduce((s,e)=>s+e.amount,0);
+  const data = buildData();
+
+  // Расходы за тот же период (если квартал выбран — только за него)
+  const qKeys = qf ? QUARTERS[qf].keys : ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"];
+  const allKeys = ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"];
+  const totalExp = data.reduce((s,b)=>s+b.dirs.reduce((ss,d)=>ss+qKeys.reduce((sss,k)=>sss+getVal(d,k),0),0),0);
+  const netProfit = totalInc - totalExp;
+  const totalUsd  = filtered.reduce((s,e)=>s+(e.amountUsd||0),0);
+  const periodLabel = currentYear + (qf ? " · " + Q_LABELS[qf] : " · все кварталы");
+
+  // ── Stats cards ────────────────────────────────────────────────────
+  const statsEl = document.getElementById("incomeStats");
+  if(statsEl) statsEl.innerHTML = `
+    <div class="income-stat blue">
+      <div class="stat-label">💰 Доходы (${periodLabel})</div>
+      <div class="stat-value">${fmtN(totalInc)} <span style="font-size:14px;font-weight:400">сом</span></div>
+      <div class="stat-sub">≈ $${totalUsd.toLocaleString("ru-RU",{maximumFractionDigits:0})} · ${filtered.length} из ${incomes.length} записей</div>
+    </div>
+    <div class="income-stat red">
+      <div class="stat-label">📤 Расходы (${periodLabel})</div>
+      <div class="stat-value">${fmtN(totalExp)} <span style="font-size:14px;font-weight:400">сом</span></div>
+      <div class="stat-sub">За ${periodLabel}</div>
+    </div>
+    <div class="income-stat profit">
+      <div class="stat-label">${netProfit>=0?'📈':'📉'} Чистая прибыль (${periodLabel})</div>
+      <div class="stat-value ${netProfit>=0?'profit-positive':'profit-negative'}">${netProfit>=0?'+':''}${fmtN(netProfit)} <span style="font-size:14px;font-weight:400">сом</span></div>
+      <div class="stat-sub">${netProfit>=0?'🟢 Прибыльно':'🔴 Убыточно'}</div>
+    </div>
+  `;
+
+  // ── Net Profit Banner ──────────────────────────────────────────────
+  const banner = document.getElementById("netProfitBanner");
+  const npVal  = document.getElementById("netProfitValue");
+  const npSub  = document.getElementById("netProfitSub");
+  const npIcon = document.getElementById("netProfitIcon");
+  if(banner){
+    banner.style.background = netProfit >= 0
+      ? "linear-gradient(135deg,#1b5e20 0%,#2e7d32 50%,#43a047 100%)"
+      : "linear-gradient(135deg,#b71c1c 0%,#c62828 50%,#e53935 100%)";
+    if(npVal) npVal.textContent = (netProfit>=0?"+":"") + fmtN(netProfit) + " сом";
+    if(npSub) npSub.textContent = netProfit>=0
+      ? `Доходы превышают расходы на ${fmtN(netProfit)} сом`
+      : `Расходы превышают доходы на ${fmtN(Math.abs(netProfit))} сом`;
+    if(npIcon) npIcon.textContent = netProfit>=0 ? "📈" : "📉";
+  }
+
+  // ── Pie Chart: Income by category ─────────────────────────────────
+  const catMap = {};
+  filtered.forEach(e=>{ catMap[e.category]=(catMap[e.category]||0)+e.amount; });
+  const catLabels = Object.keys(catMap);
+  const catData   = catLabels.map(c=>catMap[c]);
+  const catColors = catLabels.map(c=>INCOME_CAT_COLORS[c]||"#546e7a");
+
+  const pieCtx = document.getElementById("incomePieChart");
+  if(pieCtx){
+    if(incomePieC) incomePieC.destroy();
+    if(catLabels.length){
+      incomePieC = new Chart(pieCtx, {
+        type:"doughnut",
+        data:{ labels:catLabels, datasets:[{ data:catData, backgroundColor:catColors, borderWidth:2, borderColor:"#fff" }] },
+        options:{
+          plugins:{ legend:{ position:"bottom", labels:{ font:{size:11} } },
+            tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${fmtN(ctx.raw)} сом` } } },
+          responsive:true, maintainAspectRatio:true,
+          cutout:"55%"
+        }
+      });
+    }
+  }
+
+  // ── Bar Chart: Income vs Expenses by month ─────────────────────────
+  // Определяем какие месяцы показывать (если квартал — только 3 месяца)
+  const ALL_MONTH_LABELS   = ["Янв","Фев","Мар","Апр","Май","Июн","Июл","Авг","Сен","Окт","Ноя","Дек"];
+  const ALL_MONTH_KEYS_LIST= ["m1","m2","m3","m4","m5","m6","m7","m8","m9","m10","m11","m12"];
+  const chartMonthKeys  = qf ? QUARTERS[qf].keys   : ALL_MONTH_KEYS_LIST;
+  const chartMonthLabels= qf ? QUARTERS[qf].labels : ALL_MONTH_LABELS;
+
+  const incByMonth = chartMonthKeys.map(k=>{
+    const mIdx = ALL_MONTH_KEYS_LIST.indexOf(k);
+    return filtered.filter(e=>parseInt(e.date?.split("-")[1])-1 === mIdx).reduce((s,e)=>s+e.amount,0);
+  });
+  const expByMonth = chartMonthKeys.map(k=>
+    data.reduce((s,b)=>s+b.dirs.reduce((ss,d)=>ss+getVal(d,k),0),0)
+  );
+
+  const barCtx = document.getElementById("incomeBarChart");
+  if(barCtx){
+    if(incomeBarC) incomeBarC.destroy();
+    incomeBarC = new Chart(barCtx, {
+      type:"bar",
+      data:{
+        labels: chartMonthLabels,
+        datasets:[
+          { label:"Доходы",  data:incByMonth, backgroundColor:"rgba(46,125,50,.75)",  borderColor:"#2e7d32", borderWidth:1 },
+          { label:"Расходы", data:expByMonth, backgroundColor:"rgba(198,40,40,.65)",  borderColor:"#c62828", borderWidth:1 },
+        ]
+      },
+      options:{
+        plugins:{ legend:{ position:"bottom" },
+          tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${fmtN(ctx.raw)} сом` } } },
+        responsive:true, maintainAspectRatio:true,
+        scales:{ y:{ ticks:{ callback: v => fmtN(v) } } }
+      }
+    });
+  }
+
+  // ── Count badge ────────────────────────────────────────────────────
+  const countEl = document.getElementById("incomeCount");
+  if(countEl) countEl.textContent = `Итого: ${fmtN(totalInc)} сом · ${filtered.length}${filtered.length!==incomes.length?" из "+incomes.length:""} записей`;
+
+  // ── Table ──────────────────────────────────────────────────────────
+  const sorted = [...filtered].sort((a,b)=>b.date.localeCompare(a.date));
+  const body = document.getElementById("incomeBody");
+  if(!body) return;
+  if(!filtered.length){
+    body.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:32px;color:#aaa;">
+      <div style="font-size:32px;margin-bottom:8px;">💰</div>
+      ${incomes.length ? "Нет записей по выбранным фильтрам." : "Нет записей о доходах. Добавьте первую запись выше."}</td></tr>`;
+    return;
+  }
+  body.innerHTML = sorted.map((e,i)=>{
+    const realIdx = incomes.indexOf(e);
+    const color = INCOME_CAT_COLORS[e.category]||"#546e7a";
+    const pctOfTotal = totalInc>0 ? ((e.amount/totalInc)*100).toFixed(1) : 0;
+    return `<tr>
+      <td style="color:#aaa;font-size:11px;">${i+1}</td>
+      <td style="white-space:nowrap;">${e.date}</td>
+      <td><span class="cat-badge" style="background:${color}22;color:${color};font-size:11px;">${e.category}</span></td>
+      <td style="color:#555;">${e.desc||'<span style="color:#ccc;">—</span>'}</td>
+      <td class="num" style="color:#2e7d32;font-weight:bold;">+${fmtN(e.amount)}</td>
+      <td class="num" style="color:#888;font-size:12px;">${e.amountUsd?'$'+e.amountUsd.toLocaleString("ru-RU",{maximumFractionDigits:0}):'—'}</td>
+      <td class="center" style="font-size:11px;color:#666;">${pctOfTotal}%
+        <div class="pbar-bg" style="margin-top:2px;"><div class="pbar" style="width:${Math.min(pctOfTotal,100)}%;background:${color};"></div></div>
+      </td>
+      <td class="edit-only center"><button class="del-btn" onclick="delIncome(${realIdx})" title="Удалить">🗑</button></td>
+    </tr>`;
+  }).join("")
+  + `<tr style="background:#f0fdf4;font-weight:bold;">
+    <td colspan="4" style="padding:10px 12px;color:#166534;">Итого</td>
+    <td class="num" style="color:#2e7d32;font-weight:bold;padding:10px 12px;">+${fmtN(totalInc)} сом</td>
+    <td class="num" style="color:#888;padding:10px 12px;">$${totalUsd.toLocaleString("ru-RU",{maximumFractionDigits:0})}</td>
+    <td></td><td></td>
+  </tr>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════════════
 // Initialize
@@ -1665,11 +2259,13 @@ document.addEventListener("DOMContentLoaded", async function init(){
   await loadFromGoogleSheets(currentYear);
   checkSession(); // ← восстанавливаем сессию если вкладка не закрывалась
   document.getElementById("fDate").value=new Date().toISOString().split("T")[0];
+  document.getElementById("iDate").value=new Date().toISOString().split("T")[0];
   updateFormBlocks();
   updateDirs();
   updateMonths();
   renderRef();
   render();
+  renderIncome();
 });
 </script>
 </body>
