@@ -875,7 +875,7 @@ function buildFromSheets(refRows, dataRows){
     const color = row["Цвет"]||"#4EA72A";
     if(!block) return;
     if(!blockColors[block]){ blockColors[block]=color; blockOrder.push(block); blockDirs[block]=[]; }
-    if(dir) blockDirs[block].push(dir);
+    if(dir && !blockDirs[block].includes(dir)) blockDirs[block].push(dir);
   });
 
   // Build data lookup from year sheet
@@ -923,11 +923,12 @@ async function loadFromGoogleSheets(year){
     const merged = buildFromSheets(refRows, dataRows);
     INITIAL_DATA.length = 0;
     merged.forEach(b=>INITIAL_DATA.push(b));
-    refBlocks = merged.map(b=>({
+    refBlocks = dedupeRefBlocks(merged.map(b=>({
       block: b.block,
       color: b.color || "#4EA72A",
       dirs: b.dirs.map(d=>({...d}))
-    }));
+    })));
+    saveRefBlocks(); // persist clean deduplicated data to localStorage + Sheets
     currentYear = year;
     document.getElementById("yearBadge").textContent = year;
     console.log(`✅ Данные загружены: ${year}, ${merged.length} блоков`);
@@ -1059,9 +1060,15 @@ Object.entries(QUARTERS).forEach(([q,v])=> v.labels.forEach(m=> MONTH_TO_Q[m]=q)
 const DEFAULT_COLORS = ["#4EA72A","#2471a3","#e67e22","#8e44ad","#c0392b","#16a085","#8e44ad","#d35400"];
 
 // Загружаем справочник блоков из localStorage (или исходные данные)
+function dedupeRefBlocks(blocks){
+  return blocks.map(b => ({
+    ...b,
+    dirs: b.dirs.filter((d, i, arr) => arr.findIndex(x => x.name === d.name) === i)
+  }));
+}
 function loadRefBlocks(){
   const saved = localStorage.getItem("ref_blocks_2026");
-  if(saved) return JSON.parse(saved);
+  if(saved) return dedupeRefBlocks(JSON.parse(saved));
   // Первый запуск — берём из INITIAL_DATA
   return INITIAL_DATA.map((b,i)=>({
     block: b.block,
